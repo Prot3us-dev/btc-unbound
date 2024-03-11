@@ -9,8 +9,8 @@ For now, the only thing I'm interested in having working properly is a DCA bot.
 I might consider implementing a few buy/sell signals, although I'm not sure about the profitability of any algo trading strategy.
 
 ## Next Steps
-- Update wallet balance after trading
-- Get trade information, update database with the actual EUR spent
+- [x] Update wallet balance after trading
+- [ ] Get trade information, update database with the actual EUR spent
 
 ## Installation
 
