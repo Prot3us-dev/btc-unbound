@@ -8,6 +8,10 @@ import {
     addBuy,
 } from "./database.js"
 
+import { kraken } from './src/kraken.js'
+
+const broker = kraken()
+
 import moment from 'moment';
 
 const baseAPI = "https://api.kraken.com/0/"
@@ -35,20 +39,6 @@ function sleep(ms) {
     return new Promise((resolve) => {
         setTimeout(resolve, ms)
     })
-}
-
-async function makePublicRequest(endpoint) {
-    const url = `${publicAPI}${endpoint}`;
-    try {
-        const response = await fetch(url);
-        if( !response.ok ) {
-            throw new Error(`API request failed with status ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error("Error fetching Bitcoin price:", error);
-        return null; // Indicate error or handle differently
-    }
 }
 
 import crypto from "crypto"
@@ -95,7 +85,7 @@ async function makePrivateRequest(endpoint, params = {}) {
 
 var got_bitcoin_price = 0
 async function get_bitcoin_price() {
-    const data = await makePublicRequest("Ticker?pair=XBTEUR")
+    const data = await broker.getPrice("BTC", "EUR")
     got_bitcoin_price = Date.now()
     if( data != null ) {
         addTick(data.result.XXBTZEUR)
