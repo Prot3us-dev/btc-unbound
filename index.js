@@ -183,7 +183,8 @@ async function buyNow() {
             console.log(`Bought ${moment(bought.bought_at).fromNow()}: ${bought.amount} BTC @ ${Math.round(bought.price,2)} EUR`)
             let buyingAt = await whenToBuy()
             if( buyingAt > Date.now() ) {
-                console.log(`Buy ${moment(buyingAt).fromNow()}`)
+                let m = moment(buyingAt)
+                console.log(`Buy ${m.fromNow()} | ${m.format("DD/MM/YY HH:mm")}`)
             } else {
                 console.log(`Buying now`)
                 await buyNow()
