@@ -41,52 +41,9 @@ function sleep(ms) {
     })
 }
 
-import crypto from "crypto"
-function createAuthenticationSignature(endpoint, nonce, apiPostBodyData) {
-    const apiPost = nonce + apiPostBodyData;
-    const secret = Buffer.from(process.env.KRAKEN_API_SECRET, "base64");
-    const sha256 = crypto.createHash("sha256");
-    const hash256 = sha256.update(apiPost).digest("binary");
-    const hmac512 = crypto.createHmac("sha512", secret);
-    const signatureString = hmac512
-        .update('/0/private/' + endpoint + hash256, "binary")
-        .digest("base64");
-    return signatureString;
-};
-
-import axios from "axios"
-async function makePrivateRequest(endpoint, params = {}) {
-    const nonce = Date.now().toString()
-    let apiPostBodyData = "nonce=" + nonce
-    for(let param in params) {
-        let value = params[param]
-        apiPostBodyData += `&${param}=${value}`
-    }
-    const url = `${privateAPI}${endpoint}`;
-    const signature = createAuthenticationSignature(endpoint, nonce, apiPostBodyData)
-
-    try {
-        const options = {
-            headers: {
-                "API-Key": process.env.KRAKEN_API_KEY,
-                "API-Sign": signature,
-            }
-        }
-        let data = await axios.post(url, apiPostBodyData, options)
-        // if( !response.ok ) {
-        //     throw new Error(`API request failed with status ${response.status}`);
-        // }
-        return data
-    } catch (error) {
-        console.error("Error fetching Bitcoin price:", error);
-        return null; // Indicate error or handle differently
-    }
-}
-
 var got_bitcoin_price = 0
 async function get_bitcoin_price() {
     const data = await broker.getPrice("BTC", "EUR")
-    got_bitcoin_price = Date.now()
     if( data != null ) {
         addTick(data.result.XXBTZEUR)
         return data.result.XXBTZEUR.c[0];
@@ -96,7 +53,7 @@ async function get_bitcoin_price() {
 
 async function get_wallet_funds() {
     limits.apiCounter += 2
-    const response = await makePrivateRequest("Balance")
+    const response = await broker.getBalance()
     if( response.error ) {
         console.log(error)
         return null
@@ -151,7 +108,7 @@ async function buyNow() {
         return false
     }
     let volume = amountToBuy()
-    const response = await makePrivateRequest("AddOrder", {
+    const response = await broker.addOrder({
         ordertype: "market",
         type: "buy",
         volume,
@@ -177,8 +134,6 @@ async function buyNow() {
         let balance = getBalance()
         if( balance ) {
             console.log(`Balance: ${balance} EUR`)
-            // let takerBalance = balance / 1.0026
-            // let makerBalance = balance / 1.0016
             let bought = await lastBuy()
             console.log(`Bought ${moment(bought.bought_at).fromNow()}: ${bought.amount} BTC @ ${Math.round(bought.price,2)} EUR`)
             let buyingAt = await whenToBuy()
@@ -191,7 +146,6 @@ async function buyNow() {
                 walletFunds = await get_wallet_funds()
             }
         }
-        // calc buying speed btc/minute
         console.log(`Current Bitcoin price: ${currentPrice}`);
     }
 })()
