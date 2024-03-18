@@ -69,12 +69,7 @@ export function kraken() {
         },
         // Private
         async addOrder(params) {
-            return await makePrivateRequest("AddOrder", {
-                ordertype: "market",
-                type: "buy",
-                volume,
-                pair: "XBTEUR",
-            })
+            return await makePrivateRequest("AddOrder", params)
         },
         async getBalance() {
             return await makePrivateRequest("Balance")
