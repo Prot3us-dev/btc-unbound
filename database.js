@@ -27,9 +27,33 @@ const migrations = [
     alter table buys
     ADD txid VARCHAR(50);
     `,
+    // 3
+    `
+    ALTER TABLE buys
+    ADD confirmed BOOLEAN NOT NULL
+    CONSTRAINT confirmed DEFAULT false;
+    `,
+    // 4
+    `
+    ALTER TABLE buys
+    ADD total_cost decimal(10,5) not null
+    CONSTRAINT total_cost DEFAULT 0;
+    `,
+    // 5
+    `
+    ALTER TABLE buys
+    ADD cost decimal(10,5) not null
+    CONSTRAINT cost DEFAULT 0;
+    `,
+    // 6
+    `
+    ALTER TABLE buys
+    ADD fee decimal(10,5) not null
+    CONSTRAINT fee DEFAULT 0;
+    `,
 ]
 
-export async function openDB() {
+async function openDB() {
     if( db != null ) {
         await migrate()
         return db
@@ -41,7 +65,7 @@ export async function openDB() {
     return openDB()
 }
 
-await openDB()
+export const database = await openDB()
 
 // let db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE, (err) => {
 //     if( err && err.code == "SQLITE_CANTOPEN" ) {
@@ -92,7 +116,6 @@ function createTables(newdb) {
 }
 
 export async function migrate() {
-    console.log('MIGRATIONS')
     const migration_query = `SELECT * FROM sqlite_schema WHERE type='table' AND name='migrations'`
     const result = await db.get(migration_query)
     let migrationIndex = 0

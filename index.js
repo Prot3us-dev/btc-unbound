@@ -1,7 +1,9 @@
+import ui from './src/interface.js'
+import './src/models/trade.js'
+
 import {
     close,
     addTick,
-    migrate,
     lastTick,
     clearBuys,
     lastBuy,
@@ -10,7 +12,7 @@ import {
 
 import { kraken } from './src/kraken.js'
 
-const broker = kraken()
+const broker = kraken
 
 import moment from 'moment';
 
@@ -27,7 +29,7 @@ var limits = {
     apiCounterDecay: 0.5,
 }
 
-let deposit = 15.5 // eur
+let deposit = 30 // eur
 let depositSchedule = 7 * 24 * 60 * 60 * 1000 // 7 days
 let eurosPerMillis = deposit / depositSchedule
 let minimumBTCBuy = 0.0001
@@ -43,12 +45,14 @@ function sleep(ms) {
 
 var got_bitcoin_price = 0
 async function get_bitcoin_price() {
-    const data = await broker.getPrice("BTC", "EUR")
-    if( data != null ) {
+    try {
+        const data = await broker.getPrice("BTC", "EUR")
         addTick(data.result.XXBTZEUR)
-        return data.result.XXBTZEUR.c[0];
+        currentPrice = data.result.XXBTZEUR.c[0]
+        return data.result.XXBTZEUR
+    } catch {
+        return currentPrice
     }
-    return 0
 }
 
 async function get_wallet_funds() {
@@ -63,7 +67,7 @@ async function get_wallet_funds() {
 
 process.on('SIGINT', function() {
     close()
-    console.log("Closing");
+    // console.log("Closing");
     process.exit();
 });
 
@@ -85,29 +89,40 @@ function getBalance(asset) {
     }
 }
 
-function amountToBuy() {
-    let buyEachSecond = eurosPerMillis * 1000 * 1.0026 / currentPrice 
-    if( buyEachSecond < minimumBTCBuy ) {
-        buyEachSecond = minimumBTCBuy
+async function amountToBuy() {
+    let bought = await lastBuy()
+    if( bought == null ) {
+        return minimumBTCBuy
     }
-    return buyEachSecond
+    let buyEachMilli = eurosPerMillis / (currentPrice * 1.0026)
+    let millisPassed = Date.now() - bought.bought_at
+    let buyNow = buyEachMilli * millisPassed
+    // console.log(`CAN BUY ${buyNow.toFixed(8)}`)
+    return buyNow.toFixed(8)
 }
 
 async function whenToBuy() {
-    let buy = await lastBuy()
+    let bought = await lastBuy()
     //let buy = {id: 1, bought_at: Date.now(), price: 50000.00000, amount: 0.0001}
-    if( buy == null ) {
+    if( bought == null ) {
         return Date.now()
     }
-    let buyInEur = buy.amount * buy.price
-    return buy.bought_at + buyInEur / eurosPerMillis
+    let buyNow = await amountToBuy()
+    let buyEachMilli = eurosPerMillis / (currentPrice * 1.0026)
+    if( buyNow < minimumBTCBuy ) {
+        const missing = minimumBTCBuy - buyNow
+        const missingMillis = missing / buyEachMilli
+        const buyAt = Date.now() + missingMillis
+        return buyAt
+    }
+    return Date.now()
 }
 
 async function buyNow() {
-    if( whenToBuy > Date.now() ) {
+    if( whenToBuy() > Date.now() ) {
         return false
     }
-    let volume = amountToBuy()
+    let volume = await amountToBuy()
     const response = await broker.addOrder({
         ordertype: "market",
         type: "buy",
@@ -118,34 +133,31 @@ async function buyNow() {
         console.log(error)
         return null
     }
-    console.log(response.data.result)
+    // console.log(response.data.result)
     addBuy(currentPrice * 1.0026, volume, response.data.result.txid[0])
 }
 
 (async function() {
     walletFunds = await get_wallet_funds()
-    console.log(walletFunds)
+    ui.addWalletFunds(walletFunds)
     while(true) {
-        console.log("============")
         await sleep(1000)
         apiDecay()
-        console.log(`API Counter: ${limits.apiCounter}`)
-        currentPrice = await get_bitcoin_price()
-        let balance = getBalance()
-        if( balance ) {
-            console.log(`Balance: ${balance} EUR`)
+        ui.addAPICounter(limits.apiCounter)
+        let price = await get_bitcoin_price()
+        ui.addPrice(price)
+        if( getBalance() ) {
             let bought = await lastBuy()
-            console.log(`Bought ${moment(bought.bought_at).fromNow()}: ${bought.amount} BTC @ ${Math.round(bought.price,2)} EUR`)
+            ui.addLastBuy(bought)
             let buyingAt = await whenToBuy()
             if( buyingAt > Date.now() ) {
                 let m = moment(buyingAt)
-                console.log(`Buy ${m.fromNow()} | ${m.format("DD/MM/YY HH:mm")}`)
+                ui.addBuyAt(m)
             } else {
-                console.log(`Buying now`)
                 await buyNow()
                 walletFunds = await get_wallet_funds()
+                ui.addWalletFunds(walletFunds)
             }
         }
-        console.log(`Current Bitcoin price: ${currentPrice}`);
     }
 })()

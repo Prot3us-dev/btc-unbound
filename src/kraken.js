@@ -1,7 +1,7 @@
 import axios from "axios"
 import crypto from "crypto"
 
-export function kraken() {
+function broker() {
     const baseAPI = "https://api.kraken.com/0/"
     const publicAPI = `${baseAPI}public/`
     const privateAPI = `${baseAPI}private/`
@@ -73,7 +73,17 @@ export function kraken() {
         },
         async getBalance() {
             return await makePrivateRequest("Balance")
-        }
+        },
+        async getTradesHistory(start, end) {
+            const params = {
+                trades: true,
+                start,
+                end,
+            }
+            return await makePrivateRequest("TradesHistory", params)
+        },
     }
 
 }
+
+export const kraken = broker()
