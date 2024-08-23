@@ -22,7 +22,6 @@ class Interface {
     constructor() {
         this.balanceBoxConfig = {
             top: 'center',
-            left: 'center',
             width: 45,
             height: 8,
             tags: true,
@@ -45,13 +44,18 @@ class Interface {
         this.statusBoxConfig = {
             ...this.balanceBoxConfig,
             top: 'top',
-            left: 'left',
-            width: '100%',
-            height: 3,
+            left: 33,
+            width: '100%-18',
+            height: 4,
         }
-        this.screen = blessed.screen()
+        this.screen = blessed.screen({
+            dockBorders: true,
+            autoPadding: true,
+        })
         this.statusBox = blessed.text(this.statusBoxConfig)
         this.screen.append(this.statusBox);
+        // this.nextBuyGauge = contrib.gauge({label: 'Progress', stroke: 'green', fill: 'white'})
+        // gauge.setPercent(25)
     }
 
     renderStatus(content) {
@@ -61,9 +65,6 @@ class Interface {
 
     renderBalanceBox() {
         let content = this.apiCounter
-        if( this.walletFunds ) {
-            content += `\n${this.walletFunds}`
-        }
         if( this.lastBuy ) {
             content += `\n${this.lastBuy}`
         }
@@ -97,24 +98,77 @@ class Interface {
         this.lastBuy = bought
         this.lastBuy = 'Bought '
         this.lastBuy += `${moment(bought.bought_at).fromNow()}: `
-        this.lastBuy += `{bold}${bought.amount}{\/} BTC @ `
+        this.lastBuy += `{\|}{bold}${bought.amount}{\/} BTC @ `
         this.lastBuy += `{bold}${Math.round(bought.total_cost / bought.amount,2)}{\/} `
         this.lastBuy += `EUR`
         this.renderBalanceBox()
     }
 
     addPrice(price) {
-        this.price =    `Bitcoin buy price:{\|}${price.a[0]}`
-        this.price += `\nLast Bitcoin price:{\|}{bold}${price.c[0]}{\/}`
-        this.price += `\nBitcoin sell price:{\|}${price.b[0]}`
+        if( this.priceBox == null ) {
+            this.priceBox = this.addTextBox({
+                width: 18,
+                height: 5,
+                top: 'top',
+                right: '0',
+                label: {
+                    text: "{black-bg}{#ffaa00-fg}BTC Price{/}",
+                },
+            })
+        }
+        let priceTxt = `Buy:{\|}${parseFloat(price.a[0]).toFixed(2)}`
+        priceTxt +=  `\nLast:{\|}{bold}${parseFloat(price.c[0]).toFixed(2)}{\/}`
+        priceTxt +=  `\nSell:{\|}${parseFloat(price.b[0]).toFixed(2)}`
+        this.priceBox.setContent(priceTxt)
+        this.screen.render()
         this.renderStatus(JSON.stringify(Object.keys(price)))
-        this.renderBalanceBox()
     }
 
     addWalletFunds(walletFunds) {
-        this.walletFunds = `BTC: {bold}${walletFunds.XXBT}{\/}`
-        this.walletFunds += `\nEUR: {bold}${walletFunds.ZEUR}{\/}`
-        this.renderBalanceBox()
+        const boxConfig = {
+            width: 12,
+            height: 4,
+            top: 'top',
+            left: '0',
+            align: 'center',
+        }
+        if( this.walletBtcBox == null ) {
+            this.walletBtcBox = this.addTextBox(boxConfig)
+        }
+        if( this.walletEurBox == null ) {
+            this.walletEurBox = this.addTextBox({...boxConfig, left: 11})
+        }
+        if( this.walletSatBox == null ) {
+            this.walletSatBox = this.addTextBox({...boxConfig, left: 22})
+        }
+        let sats = (walletFunds.XXBT * 100000000).toString()
+        sats = sats.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const btc = parseFloat(walletFunds.XXBT).toFixed(8)
+        this.walletBtcBox.setContent(
+            `{#ff6600-fg}BTC:{\/}\n` +
+            `{bold}${btc}{\/}\n`
+        )
+        this.walletEurBox.setContent(
+            `{#ff6600-fg}SATS:{\/}\n` +
+            `{bold}${sats}{\/}\n`
+        )
+        this.walletSatBox.setContent(
+            `{#ff6600-fg}EUR:{\/}\n` +
+            `{bold}${walletFunds.ZEUR}{\/}\n`
+        )
+        this.screen.render()
+    }
+
+    addTextBox(config, replace = null) {
+        let textBox = blessed.text({
+            ...this.balanceBoxConfig,
+            ...config,
+        })
+        if( replace != null ) {
+            replace.detach()
+        }
+        this.screen.append(textBox)
+        return textBox
     }
 
     createBalanceBox(lines) {
@@ -123,6 +177,7 @@ class Interface {
         }
         this.balanceBox = blessed.text({
             ...this.balanceBoxConfig,
+            left: 'center',
             height: lines,
         })
         this.screen.append(this.balanceBox);
