@@ -22,7 +22,7 @@ class Interface {
     constructor() {
         this.balanceBoxConfig = {
             top: 'center',
-            width: 45,
+            width: 60,
             height: 8,
             tags: true,
             border: {
@@ -50,17 +50,41 @@ class Interface {
         }
         this.screen = blessed.screen({
             dockBorders: true,
-            autoPadding: true,
+            //autoPadding: true,
         })
         this.statusBox = blessed.text(this.statusBoxConfig)
         this.screen.append(this.statusBox);
-        // this.nextBuyGauge = contrib.gauge({label: 'Progress', stroke: 'green', fill: 'white'})
-        // gauge.setPercent(25)
+        this.nextBuyGauge = contrib.gauge({
+            label: 'Progress',
+            stroke: 'green',
+            fill: 'red',
+            bottom: 0,
+            left: 'left',
+            width: "100%",
+            height: 7,
+            xPadding: 0,
+            yPadding: 0,
+            xLabelPadding: 0,
+            yLabelPadding: 0,
+            border: {
+                type: 'line',
+            },
+            style: {
+                fg: 'white',
+                bg: 'black',
+                border: {
+                    fg: '#f0f0f0',
+                    bg: 'black',
+                },
+            },
+        })
+        this.screen.append(this.nextBuyGauge)
+        this.nextBuyGauge.setPercent(50)
     }
 
     renderStatus(content) {
         this.statusBox.setContent(content)
-        this.screen.render()
+        // this.screen.render()
     }
 
     renderBalanceBox() {
@@ -80,7 +104,7 @@ class Interface {
             this.createBalanceBox(height)
         }
         this.balanceBox.setContent(content)
-        this.screen.render()
+        // this.screen.render()
     }
 
     addAPICounter(counter) {
@@ -92,9 +116,17 @@ class Interface {
         this.buyAtContent = `Buy `
         this.buyAtContent += `${buyAt.fromNow()}{\|}${buyAt.format("DD/MM/YY HH:mm")}`
         this.renderBalanceBox()
+        if( this.lastBuyAt != null ) {
+            let now = moment().valueOf() - this.lastBuyAt
+            let limit = buyAt.valueOf() - this.lastBuyAt
+            let percent = (now / limit) * 100
+            this.nextBuyGauge.setPercent(percent)
+            this.renderStatus(percent.toString())
+        }
     }
 
     addLastBuy(bought) {
+        this.lastBuyAt = bought.bought_at
         this.lastBuy = bought
         this.lastBuy = 'Bought '
         this.lastBuy += `${moment(bought.bought_at).fromNow()}: `
@@ -120,43 +152,66 @@ class Interface {
         priceTxt +=  `\nLast:{\|}{bold}${parseFloat(price.c[0]).toFixed(2)}{\/}`
         priceTxt +=  `\nSell:{\|}${parseFloat(price.b[0]).toFixed(2)}`
         this.priceBox.setContent(priceTxt)
-        this.screen.render()
-        this.renderStatus(JSON.stringify(Object.keys(price)))
+        // this.screen.render()
+    }
+
+    addTrade(trade) {
+        if( this.tradeBox == null ) {
+            this.tradeBox = contrib.log({
+                ...this.balanceBoxConfig,
+                width: '100%-17',
+                height: 20,
+                top: 3,
+                right: 17,
+                label: {
+                    text: "{black-bg}{#ffaa00-fg}Trades:{/}",
+                },
+            })
+            this.screen.append(this.tradeBox)
+        }
+        this.tradeBox.log(trade.toString())
+        // this.screen.render()
     }
 
     addWalletFunds(walletFunds) {
         const boxConfig = {
             width: 12,
-            height: 4,
+            height: 3,
             top: 'top',
             left: '0',
             align: 'center',
+            label: "{black-bg}{#ffaa00-fg}BTC{/}",
         }
         if( this.walletBtcBox == null ) {
             this.walletBtcBox = this.addTextBox(boxConfig)
         }
         if( this.walletEurBox == null ) {
-            this.walletEurBox = this.addTextBox({...boxConfig, left: 11})
+            this.walletEurBox = this.addTextBox({
+                ...boxConfig,
+                left: 11,
+                label: "{black-bg}{#ffaa00-fg}SATS{/}",
+            })
         }
         if( this.walletSatBox == null ) {
-            this.walletSatBox = this.addTextBox({...boxConfig, left: 22})
+            this.walletSatBox = this.addTextBox({
+                ...boxConfig,
+                left: 22,
+                label: "{black-bg}{#ffaa00-fg}EUR{/}",
+            })
         }
         let sats = (walletFunds.XXBT * 100000000).toString()
         sats = sats.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         const btc = parseFloat(walletFunds.XXBT).toFixed(8)
         this.walletBtcBox.setContent(
-            `{#ff6600-fg}BTC:{\/}\n` +
             `{bold}${btc}{\/}\n`
         )
         this.walletEurBox.setContent(
-            `{#ff6600-fg}SATS:{\/}\n` +
             `{bold}${sats}{\/}\n`
         )
         this.walletSatBox.setContent(
-            `{#ff6600-fg}EUR:{\/}\n` +
             `{bold}${walletFunds.ZEUR}{\/}\n`
         )
-        this.screen.render()
+        // this.screen.render()
     }
 
     addTextBox(config, replace = null) {
@@ -184,8 +239,8 @@ class Interface {
     }
 
 }
-const iterface = new Interface("ok")
 
+const iterface = new Interface("ok")
 export default iterface
 
 // var log = contrib.log({

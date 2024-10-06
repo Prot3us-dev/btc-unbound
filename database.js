@@ -1,6 +1,8 @@
 import sqlite3 from "sqlite3"
 import { open } from "sqlite"
 
+import fs from "fs"
+
 const DB_PATH = "./data.db"
 
 var db = null
@@ -51,6 +53,31 @@ const migrations = [
     ADD fee decimal(10,5) not null
     CONSTRAINT fee DEFAULT 0;
     `,
+    // 7
+    `
+        create table ticker (
+            id integer primary key not null,
+            ask_price decimal(10,5) not null,
+            ask_whole_lot_volume integer not null,
+            ask_lot_volume decimal(5,3) not null,
+            bid_price decimal(10,5) not null,
+            bid_whole_lot_volume integer not null,
+            bid_lot_volume decimal(5,3) not null,
+            close_price decimal(10,5) not null,
+            close_lot_volume decimal(5,8) not null,
+            volume_value_today decimal(8,8) not null,
+            volume_value_last_24 decimal(8,8) not null,
+            volume_weighted_avg_value_today decimal(8,8) not null,
+            volume_weighted_avg_value_last_24 decimal(8,8) not null,
+            trades_today integer not null,
+            trades_last_24 integer not null,
+            high_price_today decimal(10,5) not null,
+            high_price_last_24 decimal(10,5) not null,
+            open_price_today decimal(10,5) not null,
+            open_price_last_24 decimal(10,5) not null,
+            timestamp integer not null
+        );
+    `,
 ]
 
 async function openDB() {
@@ -58,6 +85,7 @@ async function openDB() {
         await migrate()
         return db
     }
+    let newData = !fs.existsSync(DB_PATH)
     db = await open ({
         filename: DB_PATH,
         driver: sqlite3.Database
@@ -90,28 +118,6 @@ function createDatabase() {
 function createTables(newdb) {
     console.log('CREATING DATABASE TABLES')
     newdb.exec(`
-        create table ticker (
-            id integer primary key not null,
-            ask_price decimal(10,5) not null,
-            ask_whole_lot_volume integer not null,
-            ask_lot_volume decimal(5,3) not null,
-            bid_price decimal(10,5) not null,
-            bid_whole_lot_volume integer not null,
-            bid_lot_volume decimal(5,3) not null,
-            close_price decimal(10,5) not null,
-            close_lot_volume decimal(5,8) not null,
-            volume_value_today decimal(8,8) not null,
-            volume_value_last_24 decimal(8,8) not null,
-            volume_weighted_avg_value_today decimal(8,8) not null,
-            volume_weighted_avg_value_last_24 decimal(8,8) not null,
-            trades_today integer not null,
-            trades_last_24 integer not null,
-            high_price_today decimal(10,5) not null,
-            high_price_last_24 decimal(10,5) not null,
-            open_price_today decimal(10,5) not null,
-            open_price_last_24 decimal(10,5) not null,
-            timestamp integer not null
-        );
     `);
 }
 
@@ -189,7 +195,10 @@ export async function lastTick() {
 }
 
 export async function lastBuy() {
-    return await db.get('SELECT * from buys ORDER BY id DESC LIMIT 1')
+    let buy = await db.get('SELECT * from buys ORDER BY id DESC LIMIT 1')
+    if( buy == null ) {
+        return lastBuy()
+    }
 }
 
 export async function clearBuys() {

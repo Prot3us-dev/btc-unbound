@@ -1,15 +1,12 @@
 import ui from './src/interface.js'
-import './src/models/trade.js'
-
+import {Trade} from './src/models/trade.js'
 import {
     close,
     addTick,
     lastTick,
     clearBuys,
-    lastBuy,
     addBuy,
 } from "./database.js"
-
 import { kraken } from './src/kraken.js'
 
 const broker = kraken
@@ -90,7 +87,7 @@ function getBalance(asset) {
 }
 
 async function amountToBuy() {
-    let bought = await lastBuy()
+    let bought = await Trade.lastTrade()
     if( bought == null ) {
         return minimumBTCBuy
     }
@@ -102,7 +99,7 @@ async function amountToBuy() {
 }
 
 async function whenToBuy() {
-    let bought = await lastBuy()
+    let bought = await Trade.lastTrade()
     //let buy = {id: 1, bought_at: Date.now(), price: 50000.00000, amount: 0.0001}
     if( bought == null ) {
         return Date.now()
@@ -135,29 +132,40 @@ async function buyNow() {
     }
     // console.log(response.data.result)
     addBuy(currentPrice * 1.0026, volume, response.data.result.txid[0])
+    // const trade = new Trade({
+    //     amount: volume,
+    //     price: currentPrice * 1.0026,
+    //     txid: response.data.result.txid[0],
+    // })
+    // await trade.save()
 }
 
-(async function() {
-    walletFunds = await get_wallet_funds()
-    ui.addWalletFunds(walletFunds)
-    while(true) {
-        await sleep(1000)
-        apiDecay()
-        ui.addAPICounter(limits.apiCounter)
-        let price = await get_bitcoin_price()
-        ui.addPrice(price)
-        if( getBalance() ) {
-            let bought = await lastBuy()
-            ui.addLastBuy(bought)
-            let buyingAt = await whenToBuy()
-            if( buyingAt > Date.now() ) {
-                let m = moment(buyingAt)
-                ui.addBuyAt(m)
-            } else {
-                await buyNow()
-                walletFunds = await get_wallet_funds()
-                ui.addWalletFunds(walletFunds)
-            }
+// let trade = await Trade.fetchOrder("OGAOZA-FLAJU-HNB4CZ")
+
+let trades = await Trade.all()
+for( let trade of trades ) {
+    ui.addTrade(trade)
+}
+
+walletFunds = await get_wallet_funds()
+ui.addWalletFunds(walletFunds)
+while(true) {
+    await sleep(1000)
+    apiDecay()
+    ui.addAPICounter(limits.apiCounter)
+    let price = await get_bitcoin_price()
+    ui.addPrice(price)
+    if( getBalance() ) {
+        let bought = await Trade.lastTrade()
+        ui.addLastBuy(bought)
+        let buyingAt = await whenToBuy()
+        if( buyingAt > Date.now() ) {
+            let m = moment(buyingAt)
+            ui.addBuyAt(m)
+        } else {
+            await buyNow()
+            walletFunds = await get_wallet_funds()
+            ui.addWalletFunds(walletFunds)
         }
     }
-})()
+}
