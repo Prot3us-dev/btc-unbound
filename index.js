@@ -26,7 +26,7 @@ var limits = {
     apiCounterDecay: 0.5,
 }
 
-let deposit = 30 // eur
+let deposit = 100 // eur
 let depositSchedule = 7 * 24 * 60 * 60 * 1000 // 7 days
 let eurosPerMillis = deposit / depositSchedule
 let minimumBTCBuy = 0.0001

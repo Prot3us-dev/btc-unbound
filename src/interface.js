@@ -84,7 +84,7 @@ class Interface {
 
     renderStatus(content) {
         this.statusBox.setContent(content)
-        // this.screen.render()
+        this.screen.render()
     }
 
     renderBalanceBox() {
@@ -104,7 +104,7 @@ class Interface {
             this.createBalanceBox(height)
         }
         this.balanceBox.setContent(content)
-        // this.screen.render()
+        this.screen.render()
     }
 
     addAPICounter(counter) {
@@ -152,7 +152,7 @@ class Interface {
         priceTxt +=  `\nLast:{\|}{bold}${parseFloat(price.c[0]).toFixed(2)}{\/}`
         priceTxt +=  `\nSell:{\|}${parseFloat(price.b[0]).toFixed(2)}`
         this.priceBox.setContent(priceTxt)
-        // this.screen.render()
+        this.screen.render()
     }
 
     addTrade(trade) {
@@ -170,7 +170,7 @@ class Interface {
             this.screen.append(this.tradeBox)
         }
         this.tradeBox.log(trade.toString())
-        // this.screen.render()
+        this.screen.render()
     }
 
     addWalletFunds(walletFunds) {
@@ -211,7 +211,7 @@ class Interface {
         this.walletSatBox.setContent(
             `{bold}${walletFunds.ZEUR}{\/}\n`
         )
-        // this.screen.render()
+        this.screen.render()
     }
 
     addTextBox(config, replace = null) {
